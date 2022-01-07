@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "taibei.fullname" . }}
+  labels:
+    {{- include "taibei.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      nodePort: {{ .Values.service.nodePort }} # added manually, there is no field by defalut.
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "taibei.selectorLabels" . | nindent 4 }}

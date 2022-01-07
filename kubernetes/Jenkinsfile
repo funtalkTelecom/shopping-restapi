@@ -1,0 +1,70 @@
+pipeline{
+    
+    agent any
+    
+    environment {
+     DOCKER_TAG = getVersion()
+    }
+    
+    stages{
+        
+        stage('git check out'){
+          
+          steps{
+              git credentialsId: 'gitlab-username-password', 
+                  url: 'git@192.168.137.34:root/taibei-test.git'
+          }
+        }
+      
+       stage('maven build'){
+          
+          steps{
+              sh "mvn clean package"
+          }
+        }
+
+
+       stage("Docker Image"){
+                   withCredentials([usernamePassword(credentialsId: "k8s-user-pass", usernameVariable: "username",
+                                    passwordVariable: "password")]) {
+
+                   	def remote = [:]
+                   	remote.name= 'master-node'
+                   	remote.host = '192.168.137.31'
+                   	remote.user = username
+                   	remote.password = password
+                   	remote.allowAnyHosts = true
+
+                    sshPut remote: remote, from: 'target/taibei-1.0.jar', into: './application'
+                    sshPut remote: remote, from: 'kubernetes/Dockerfile', into: './application'
+
+                   }
+        }
+
+        stage("Push To DockerHub"){
+            withCredentials([usernamePassword(credentialsId: "k8s-user-pass", usernameVariable: "username", passwordVariable: "password")]) {
+
+            	def remote = [:]
+            	remote.name= 'master-node'
+            	remote.host = '192.168.137.31'
+            	remote.user = username
+            	remote.password = password
+            	remote.allowAnyHosts = true
+            	
+            	writeFile file:'push-image.sh', text: ' docker login   -u qiluwxp -p qiluwxp020601 \n   docker  push qiluwxp/taibei:1.0  \n exit  '
+            
+                sshScript remote: remote,script: "push-image.sh"
+            }
+    }
+        
+        
+    }
+    
+}
+
+    def getVersion(){
+        
+        def commitHash= sh returnStdout: true, script: 'git rev-parse --short HEAD'
+        return commitHash
+    }
+

@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taibei-deployment
+spec:
+  selector:
+    matchLabels:
+      app: taibei-app
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: taibei-app
+    spec:
+      containers:
+      - name: taibei-app
+        image: qiluwxp/taibei:DOCKER_TAG
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              key: host
+              name: db-config
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: name
+              name: db-config
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: db-user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: db-user
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: taibei-service
+  labels:
+    name: taibei-service
+spec:
+  ports:
+  - port: 80            # service pod port
+    targetPort: 80     # backend deployment port
+    protocol: TCP
+      #nodePort: 30100      # when type is NodePort, this filed need to be set.
+    # because of nginx-ingress, annotate this field.
+  selector:
+    app: taibei-app
+# type: NodePort           # because of nginx-ingress, annotate this field. by default it is ClusterIP.
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: taibei-ingress
+spec:
+  rules:
+  - host: "taibei.com"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: taibei-service
+            port:
+              number: 80

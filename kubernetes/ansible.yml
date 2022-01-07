@@ -1,0 +1,11 @@
+- hosts: test
+  tasks:
+  - name: copy deployment file to kubernetes master
+    copy:
+      src:  taibei-app-deployment.yml          # ralated path to ansible.yml in the local machine
+      dest: /root/application/                 # execute in the remote machine
+  - name: delete the previous of kubernetes objects
+    command: kubectl delete -f ./application/taibei-app-deployment.yml
+    ignore_errors: yes
+  - name: Create a Deployment by reading the definition from a local file
+    command: kubectl apply -f ./application/taibei-app-deployment.yml

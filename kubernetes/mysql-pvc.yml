@@ -1,0 +1,15 @@
+# define a persistent volume claim(PVC) for mysql storage, dynamically provisioned by cluster
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim  # name of PVC essential for identifying the storage data
+  labels:
+    app: mysql
+    tier: database
+spec:
+  storageClassName: manual
+  accessModes:
+  - ReadWriteOnce  # this specifies the mode of the claim that we are trying to create
+  resources:
+    requests:
+      storage: 1Gi  # this will tell kubernetes about the amount of the space that we are trying to claim

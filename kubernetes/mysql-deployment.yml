@@ -1,0 +1,77 @@
+# Define a service to expose mysql to other services
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  labels:
+    app: mysql
+    tier: database
+spec:
+  type: NodePort
+  ports:
+    - port: 3306         # 这里的端口和clusterIP对应，即ip:3306,供内部访问。
+      targetPort: 3306  # 端口一定要和container暴露出来的端口对应
+      protocol: TCP
+      nodePort: 30306   # 所有的节点都会开放此端口，此端口供外部调用。
+  selector:             # 这里选择器一定要选择container的标签
+    app: mysql
+    tier: database
+---
+# configure deployment of mysql server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  labels:
+    app: mysql
+    tier: database
+spec:
+  selector:  # 从template中查找labels一致的container
+    matchLabels:
+      app: mysql
+      tier: database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:   # must match service and deployment selectors
+        app: mysql
+        tier: database
+    spec:
+      containers:
+        - image: mysql:5.7  #image from docker-hub
+          args:
+            - "--ignore-db-dir=lost+found" # workaround for msql
+          name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD  # setting root password of mysql from secret
+              valueFrom:
+                secretKeyRef:
+                  name: db-admin  # kind: Secret  -->metadata ---> name
+                  key: password   # kind: Secret  -->data ---> key:value的key
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-user
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-user
+                  key: password
+            - name: MYSQL_DATABASE   # setting database name from configmap
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: name
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:   # mounting valume obtained from PVC
+            - mountPath: /var/lib/mysql  # MySQL容器的数据都是存在这个目录的，要对这个目录做数据持久化
+                                          #this is the path in the container on which the mounting takes place.
+              name: mysql-persistent
+      volumes:
+        - name: mysql-persistent   # obtaining volume from PVC
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim

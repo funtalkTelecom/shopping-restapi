@@ -1,0 +1,5 @@
+操作说明：
+程序启动后，首先获取access_token和refresh_token
+post:  http://localhost:8080/api/v1/login     Content-Type= application/x-www-form-urlencoded  body:username=王新谱&password=123456
+
+后面所有的操作，必须在header中添加Authorization = Bearer:xxx_token       // Bearer:是后端程序规定的开始标识
